@@ -6,7 +6,7 @@
 namespace fn {
 //
 
-ATTR(inl)
+ATTR(inl)	// REVIEW : should be static_inl no?
 Span itoa10(usize number, char* buffer, usize bufferSize) {
 	ASSERT(bufferSize >= 20, "Buffer isn't big enough for itoa");
 	char* ptr = buffer + bufferSize;

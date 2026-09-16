@@ -1,10 +1,9 @@
 #pragma once
-#include <unistd.h>
 #include <ctime>
+#include <unistd.h>
 
 #include "core.hpp"
-
-namespace fn {
+#include "pure_functions.hpp"
 
 static u64 lastTime = 0;
 static u64 firstTime = 0;
@@ -19,6 +18,15 @@ ATTR(static_inl, constructor)
 void log_init_run_once() {
 	lastTime = get_ns();
 	firstTime = lastTime;
+}
+
+ATTR(static_inl)
+void put_num10(usize number, bool newLine = true) {
+	char buffer[32];
+	Span result = fn::itoa10(number, buffer, 24);
+	if (newLine)
+		result.ptr[result.size] = '\n';
+	write(1, result.ptr, result.size + newLine);
 }
 
 void log(const char *str = nullptr) {
@@ -68,6 +76,4 @@ void log(const char *str = nullptr) {
 	p = LITAPPEND(p, ">\n");
 
 	write(STDOUT_FILENO, buf, (usize)(p - buf));
-}
-
 }

@@ -2,33 +2,12 @@
 #include <cstddef>
 #include <stdint.h>
 #include <climits>
+#include "core_types.hpp"
 
 // New Keywords
 #define restrict			__restrict__
 #define static_inl			static inline
 #define offsetof(t, d)		__builtin_offsetof(t, d)
-
-// Types
-typedef char				i8;
-typedef unsigned char		u8;
-typedef int16_t				i16;
-typedef uint16_t			u16;
-typedef int32_t				i32;
-typedef uint32_t			u32;
-typedef int64_t				i64;
-typedef uint64_t			u64;
-typedef float				f32;
-typedef double				f64;
-typedef __int128			i128;
-typedef unsigned __int128	u128;
-typedef size_t				usize;
-typedef ptrdiff_t			isize;
-typedef intptr_t			iptr;
-typedef uintptr_t			uptr;
-typedef unsigned char		uchar;	// For completeness, to mirror platform's type
-typedef unsigned short		ushort;
-typedef unsigned int		uint;
-typedef unsigned long		ulong;
 
 // Wrapped keywords
 #if defined(__cplusplus) && __cplusplus >= 201103L
@@ -42,6 +21,7 @@ typedef unsigned long		ulong;
 #define ARRAY_SIZE(arr)		(sizeof(arr) / sizeof((arr)[0]))
 #define ARRAY_END(arr)		(&(arr)[ARRAY_SIZE(arr)])
 #define ATTR(kind, ...) ATTR_##kind __attribute__((__VA_ARGS__))
+#define ATTR_none
 #define ATTR_inl inline __attribute__((always_inline))
 #define ATTR_static static
 #define ATTR_static_inl static inline __attribute__((always_inline))

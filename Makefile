@@ -1,6 +1,6 @@
 # Configuration ------------------------------- #
 NAME = webserv
-VPATH := $(shell find src -type d) test
+VPATH := $(shell find src -type d)
 SRC = main.cpp
 SRC_TEST = test.cpp
 LDLIBS =
@@ -19,6 +19,7 @@ CXX = clang++
 CPPFLAGS = $(addprefix -I,$(VPATH))
 CXXFLAGS = -Wall -Wextra -O2 -std=c++23 -fno-exceptions
 LDFLAGS = #-nostdlib++ # Insane that just linking with stdlib++ accrues a 70kb allocation for exception pools (WITH EXCEPTIONS DISABLED!)
+TEST = -O3 -march=native
 DEBUG = -g -DDEBUG_MODE -O0 -Wpedantic -Wcast-qual -Wfloat-equal -Wswitch-default -Wsign-conversion
 ASAN = -fsanitize=address,undefined,leak -fno-omit-frame-pointer
 TSAN = -fsanitize=thread -fno-omit-frame-pointer
@@ -45,9 +46,10 @@ run:
 	clear
 	./$(BIN) $(ARG)
 
+test: CXXFLAGS += $(TEST)
 test:
 	$(MAKE) clean
-	$(MAKE) SRC="$(SRC_TEST)" asan
+	$(MAKE) SRC="$(SRC_TEST)" test
 
 vrun:
 	clear
