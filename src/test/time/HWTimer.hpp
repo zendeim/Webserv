@@ -5,7 +5,6 @@
 #include <unistd.h>
 
 #include "core.hpp"
-#include "core_utils.hpp"
 #include "pure_functions.hpp"
 
 // If 0, it will run CPUID, and if that fails, calibration

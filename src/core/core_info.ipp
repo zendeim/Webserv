@@ -23,6 +23,18 @@ constexpr unsigned long long operator""_K(unsigned long long x) {
 	return x * 1000ULL;
 }
 
+constexpr unsigned long long operator""_GB(unsigned long long x) {
+	return x * 1024ULL * 1024ULL * 1024ULL;
+}
+
+constexpr unsigned long long operator""_MB(unsigned long long x) {
+	return x * 1024ULL * 1024ULL;
+}
+
+constexpr unsigned long long operator""_KB(unsigned long long x) {
+	return x * 1024ULL;
+}
+
 template <typename Type>
 static constexpr usize sizeof_bits(const Type&) {
 	return sizeof(Type) * CHAR_BIT;

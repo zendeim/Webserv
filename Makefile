@@ -19,12 +19,12 @@ CXX = clang++
 CPPFLAGS = $(addprefix -I,$(VPATH))
 CXXFLAGS = -Wall -Wextra -O2 -std=c++23 -fno-exceptions
 LDFLAGS = #-nostdlib++ # Insane that just linking with stdlib++ accrues a 70kb allocation for exception pools (WITH EXCEPTIONS DISABLED!)
-TEST = -O3 -march=native
 DEBUG = -g -DDEBUG_MODE -O0 -Wpedantic -Wcast-qual -Wfloat-equal -Wswitch-default -Wsign-conversion
 ASAN = -fsanitize=address,undefined,leak -fno-omit-frame-pointer
 TSAN = -fsanitize=thread -fno-omit-frame-pointer
 FAST = -march=native -O3 -ffast-math -fstrict-aliasing
 
+TEST = -O3 -march=native
 # Pattern Rules: Compilation ------------------ #
 $(OBJ_PATH)/%.o: %.cpp | $(OBJ_PATH)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
@@ -49,7 +49,7 @@ run:
 test: CXXFLAGS += $(TEST)
 test:
 	$(MAKE) clean
-	$(MAKE) SRC="$(SRC_TEST)" test
+	$(MAKE) SRC="$(SRC_TEST)" CXXFLAGS="$(CXXFLAGS)" all
 
 vrun:
 	clear
