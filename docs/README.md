@@ -141,3 +141,18 @@ There are two arenas:
 	* Beta	(4MB): Fixed storage space budget for virtual server configs and error pages
 
 For temporary things that aren't going to be used by the program later like tokens and unprocessed configs, arena alpha is used. This ensures no additional allocations or frees are necessary, since whatever was going to be used by connections is considered garbage memory before initialization.
+
+## Dechunking
+HTTP chunking is a horrible protocol. Variable sized payloads with ASCII parsing is a recipe for disaster and inefficiency. It also introduces an annoying difficulty when using fixed buffers : Ideally you need two persistent buffers, one for raw input, and another for processed output. But using more memory for all connection types when this is only an issue for chunked encoding didn't sit right with me, and inplace dechunking is slow because you have to deal with aliasing and MEMMOVEs. 
+
+My solution to this was to read into a temporary stack buffer, dechunk and save the processed input into recvBuffer, mark the processed output with scanPos, and append the unprocessed tail. The unprocessed tail is generally going to be very small like 16 bytes, or contain the next request. The extra memory used lives entirely on the stack, so it ends up being a very clean one buffer, one read, one copy, one write
+
+## Epoll
+Previously all reads/writes went through epoll, but this made for a horrible mess of state transitions and poor producer/consumer configurations.
+For example, a connection dispatch call could read from client, not be able to write to CGI, which makes most further calls pointless because there is no new data.
+By constraining epoll to client FD only, we ensure continuity of the data stream, aka no clogging of the pipes. Because we also always constrain IO sizes to ATOMIC_IOSIZE, all writes and reads are atomic and no short writes can occur, ensuring that errors we receive are fatal errors. This is only a problem when:
+- CGI sleeps and doesn't consume input;
+- CGI sleeps and doesn't produce output;
+- The delta between data produced by the client and consumed by CGI is greater than 64kb (i.e. poorly written cgi implementation);
+
+Given that these conditions are deliberately obtuse, treating them as fatal errors is acceptable
