@@ -20,22 +20,19 @@ CONNECTION_INL
 
 CONNECTION_INL
 (isize) read_chunked(Epoll& epoll) {
-	ASSERT(recvBuffer.readPos <= recvBuffer.scanPos && recvBuffer.scanPos <= recvBuffer.writePos, "Invalid chunked receive positions");
 	HTTP_Buffer tmp = {};
 	tmp.append(recvBuffer.sptr(), recvBuffer.writePos - recvBuffer.scanPos);
-	recvBuffer.writePos = recvBuffer.scanPos;
-	recvBuffer.compact();
 
-	const usize maxBytesToRead = recvBuffer.capacity() - recvBuffer.size() - tmp.size();
-	if (epoll.request_read() && maxBytesToRead != 0) {
+	const usize maxBytesToRead = recvBuffer.capacity() - recvBuffer.size();
+	if (maxBytesToRead != 0 && epoll.request_read()) {
 		const isize bytesRead = tmp.read(clientFd, MIN(maxBytesToRead, (usize)ATOMIC_IOSIZE));
 		if (bytesRead <= 0)
 			return -1;
 	}
-	Status::Code code = tmp.dechunk(recvBuffer, chunkSize, bodySize);
-	recvBuffer.scanPos = recvBuffer.writePos;	// Decoded prefix ends here; retain the unprocessed tail
-	recvBuffer.append(tmp.get_span());
-	return code;
+	recvBuffer.writePos = recvBuffer.scanPos;
+	if (recvBuffer.capacity() - recvBuffer.writePos < tmp.size())
+		recvBuffer.compact();
+	return tmp.dechunk(recvBuffer, chunkSize, bodySize);
 }
 
 CONNECTION_INL

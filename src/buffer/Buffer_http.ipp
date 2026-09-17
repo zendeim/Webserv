@@ -4,11 +4,13 @@
 /*
 	chunkSize == 0 means we're reading the chunk header
 	bodySize is the remaining allowance specified in the config
-	other receives decoded bytes; unprocessed input remains in this buffer
+	other receives decoded bytes followed by unprocessed input, with scanPos marking the boundary
 */
 
 BUFFER_INL
 (Status::Code) dechunk(Buffer& other, usize& chunkSize, usize& bodySize) {
+	ASSERT(other.capacity() - other.writePos >= size(), "Insufficient dechunk destination space");
+	Status::Code code = Status::unset;
 	while (writePos - readPos > 2) {
 // ==== Reading chunk header ==================================================
 		if (chunkSize == 0) {
@@ -17,11 +19,15 @@ BUFFER_INL
 			if (LITCMP(data + readPos, "0\r\n\r\n") == 0) {
 				readPos += 5;
 				scanPos = readPos;
-				return Status::ok;
+				code = Status::ok;
+				break;
 			}
 			const Span line = find_line_end();
-			if (line.ptr == NULL)
-				return (writePos - readPos > 16) ? Status::i400 : Status::unset;
+			if (line.ptr == NULL) {
+				if (writePos - readPos > 16)
+					return Status::i400;
+				break;
+			}
 			chunkSize = fn::qstrtol16((char*)data + readPos, line.size);
 			if (chunkSize == 0 || chunkSize == SIZE_MAX)
 				return Status::i400;
@@ -45,7 +51,9 @@ BUFFER_INL
 			}
 		}
 	}
-	return Status::unset;
+	other.scanPos = other.writePos;
+	other.append(get_span());
+	return code;
 }
 
 BUFFER_INL

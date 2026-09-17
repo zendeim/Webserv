@@ -188,11 +188,6 @@ struct Status {
 
 	ATTR(inl, pure) bool is_set() const { return index != unset; }
 
-	ATTR(inl) Status& operator=(Code code) {
-		index = (u16)code;
-		return *this;
-	}
-
 	ATTR(inl, pure) bool operator==(Code code) const { return index == (u16)code; }
 	ATTR(inl, pure) bool operator!=(Code code) const { return index != (u16)code; }
 };

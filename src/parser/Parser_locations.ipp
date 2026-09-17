@@ -119,7 +119,7 @@ PARSER_INL
 	ParsedLocation loc = {};
 	loc.uri = tokArray[0].value;
 	loc.redirectTarget = Span::create("");
-	loc.redirectStatus = Status::unset;
+	loc.redirectStatus.index = Status::unset;
 
 	if (loc.uri.ptr[0] != '/')
 		PERR_EXIT(1, "Error: Invalid location path");
