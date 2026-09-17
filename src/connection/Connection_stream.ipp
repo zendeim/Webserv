@@ -19,17 +19,22 @@ CONNECTION_INL
 }
 
 CONNECTION_INL
-(Status::Code) write_chunked() {
-	HTTP_Buffer tmpBuffer = {};
-	Status::Code code = recvBuffer.dechunk(tmpBuffer, chunkSize, bodySize);
-	if (code >= Status::i400)
-		return code;
+(isize) read_chunked(Epoll& epoll) {
+	ASSERT(recvBuffer.readPos <= recvBuffer.scanPos && recvBuffer.scanPos <= recvBuffer.writePos, "Invalid chunked receive positions");
+	HTTP_Buffer tmp = {};
+	tmp.append(recvBuffer.sptr(), recvBuffer.writePos - recvBuffer.scanPos);
+	recvBuffer.writePos = recvBuffer.scanPos;
+	recvBuffer.compact();
 
-	const usize bytesToWrite = tmpBuffer.size();
-	if (bytesToWrite == 0)
-		return code;
-	if (tmpBuffer.write_all(writeFd, bytesToWrite) != (isize)bytesToWrite)
-		return Status::i500;
+	const usize maxBytesToRead = recvBuffer.capacity() - recvBuffer.size() - tmp.size();
+	if (epoll.request_read() && maxBytesToRead != 0) {
+		const isize bytesRead = tmp.read(clientFd, MIN(maxBytesToRead, (usize)ATOMIC_IOSIZE));
+		if (bytesRead <= 0)
+			return -1;
+	}
+	Status::Code code = tmp.dechunk(recvBuffer, chunkSize, bodySize);
+	recvBuffer.scanPos = recvBuffer.writePos;	// Decoded prefix ends here; retain the unprocessed tail
+	recvBuffer.append(tmp.get_span());
 	return code;
 }
 
@@ -63,11 +68,14 @@ CONNECTION_INL
 
 CONNECTION_INL
 (isize) download_file_chunked(Epoll& epoll) {
-	if (read_from_client(epoll) < 0)
+	const isize code = read_chunked(epoll);
+	if (code < 0)
 		return -1;
-	Status::Code code = write_chunked();
 	if (code >= Status::i400)
-		return flush_setup_close(epoll, code);
+		return flush_setup_close(epoll, (Status::Code)code);
+	const usize bytesToWrite = recvBuffer.scanPos - recvBuffer.readPos;
+	if (bytesToWrite != 0 && recvBuffer.write_all(writeFd, bytesToWrite) < 0)
+		return flush_setup_close(epoll, Status::i500);
 	if (code == Status::ok) {
 		bodySize = 0;
 		build_header(Status::i201);

@@ -12,11 +12,14 @@ CONNECTION_INL
 
 CONNECTION_INL
 (isize) cgi_chunked(Epoll& epoll) {
-	if (read_from_client(epoll) < 0)
+	const isize code = read_chunked(epoll);
+	if (code < 0)
 		return -1;
-	Status::Code code = write_chunked();
 	if (code >= Status::i400)
-		return flush_setup_close(epoll, code);
+		return flush_setup_close(epoll, (Status::Code)code);
+	const usize bytesToWrite = recvBuffer.scanPos - recvBuffer.readPos;
+	if (bytesToWrite != 0 && recvBuffer.write_all(writeFd, bytesToWrite) < 0)
+		return flush_setup_close(epoll, Status::i500);
 	if (code == Status::ok) {
 		bodySize = 0;
 		return switch_to_cgi(epoll);

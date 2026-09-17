@@ -90,7 +90,7 @@ struct Connection {
 	isize flush(Epoll& epoll);
 	isize write_to_client(Epoll& epoll);
 	isize read_from_client(Epoll& epoll);
-	Status::Code write_chunked();
+	isize read_chunked(Epoll& epoll);
 
 	// Setup
 	isize setup_dispatch(Epoll& epoll);

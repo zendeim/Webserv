@@ -4,10 +4,11 @@
 /*
 	chunkSize == 0 means we're reading the chunk header
 	bodySize is the remaining allowance specified in the config
+	other receives decoded bytes; unprocessed input remains in this buffer
 */
 
 BUFFER_INL
-(Status::Code) dechunk(Buffer& tmp, usize& chunkSize, usize& bodySize) {
+(Status::Code) dechunk(Buffer& other, usize& chunkSize, usize& bodySize) {
 	while (writePos - readPos > 2) {
 // ==== Reading chunk header ==================================================
 		if (chunkSize == 0) {
@@ -18,21 +19,21 @@ BUFFER_INL
 				scanPos = readPos;
 				return Status::ok;
 			}
-			if (find_line_end().ptr == NULL)
-				return Status::unset;
-			chunkSize = fn::qstrtol16((char*)data + readPos);
+			const Span line = find_line_end();
+			if (line.ptr == NULL)
+				return (writePos - readPos > 16) ? Status::i400 : Status::unset;
+			chunkSize = fn::qstrtol16((char*)data + readPos, line.size);
 			if (chunkSize == 0 || chunkSize == SIZE_MAX)
 				return Status::i400;
 			if (chunkSize > bodySize)
 				return Status::i413;
 			bodySize -= chunkSize;
-			readPos = scanPos;		// Everything after the digit is ignored
+			readPos = scanPos;
 		}
 // ==== Reading chunk body ====================================================
 		else {
-			// const usize appendLength = MIN3(chunkSize, writePos - readPos - 2, (usize)ATOMIC_IOSIZE - tmp.size());
 			const usize appendLength = MIN(chunkSize, writePos - readPos - 2);
-			tmp.append((char*)data + readPos, appendLength);
+			other.append((char*)data + readPos, appendLength);
 			readPos += appendLength;
 			scanPos = readPos;
 			chunkSize -= appendLength;	// Guaranteed to be chunksize or less
