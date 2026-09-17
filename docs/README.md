@@ -1,6 +1,8 @@
 # webserv
 An HTTP/1.1 server written in C++
 
+This readme was NOT written with AI (except for the formatting because life is too short to learn proper markdown syntax). I don't know why, but I haven't read a ReadMe that was written by AI that was worth reading.
+
 ## Description
 Initially, this server was written as part of the 42 curriculum that enforces several constraints, such as the inability of checking errno after reads/writes, C++98 standard and other weird stuff
 I might gradually update and modernize, but if you encounter something weird, it's probably the reason.
@@ -44,6 +46,46 @@ server {
 	}
 }
 ```
+
+## Interesting stuff
+### Fixed-size per-connection buffers
+Each connection gets exactly 16KB of data, of which only 64 bytes are used for metadata. The memory layout is carefully crafted with unions so that distinct states reuse the same memory rather than requiring space for every possible state simultaneously. For example, a connection generally has two 8KB buffers for streaming, but during request parsing it switches to a 16KB single buffer interpretation
+
+### Memory Pools with Hierarchical Bitmap Indexing
+Connections are indexed with two bitmaps, so that searching the pool takes like 4 assembly instructions. 
+
+### Compressed Spans for Locations
+Each location has about 6 string views, which ordinarily would consume at least 96 bytes with ptr + usize length. The compressed spans pack their strings relative to themselves, so each view consumes 4 bytes of memory, bringing the total down from 96 to 24 bytes. This is a per-location reduction, so if one server has 10 locations, that's 720 bytes saved, making it way more likely that they remain in hot in cache. 
+
+### Zero-copy CGI forks
+Most CGI environment variables are given to the child process directly from the buffer, with the QUERY_NAME= prepended inplace avoid the creation of a separate copy. Additionally, extra care went in to avoid writes after fork, so that no Copy on Writes (CoWs) are triggered;
+
+### O(1) HTTP Status indexing
+Probably the dumbest optimization relative to time spent versus performance gained, but using a tiny lookup-table, I avoid branchy code and get an extremely fast and lean indexing for the HTTP statuses.
+
+### SIMD SSE/AVX primitives and Sentinel-based parsing
+Most matching operations are done with SIMD. 
+For example, my strcasecmp matching "keep-alive" makes it so all bytes are made upper-case and compared simultaneously
+Other matches also 
+
+I have also implemented a QMEMCHR that uses SSE/AVX intrinsics. Why not just use LIBC's MEMCHR I hear you ask? 
+Well.. I don't have a good enough answer. BUT! It is competitive to LIBC's implementation, something like 20% slower when not inlined, and faster when it is
+The advantage of having my own implementation is that it can be inlined, and that is huge for some scenarios. 
+
+Definitely not worth the headache though, especially when having to deal with functions whose names should constitute a war crime (_mm512_maskz_gf2p8affineinv_epi64_epi8)
+
+### ASCII Lookup-Table
+This table ended up being so nice to use, because the way it encodes information lets it be multipurpose. A normal ascii lut normally does one of these things, not all of them together:
+1) Determine is hex, is alpha numeric, is identifier, is valid rfc, is valid url, is html escape with one check 
+2) Encode alphanumerics into a 0-35 range (useful to convert ASCII HEX to number)
+3) Encode escape HTMLs and URLs into a linear range, so it can be indexed with another lookup-table 
+4) More stuff but I'm tired of searching the project (TODO: write better documentation)
+This increases the chance the table stays hot in L1 cache
+
+### Rapid-fire cool stuff
+* CGI Children are reaped asynchronously
+* Configuration parsing reuses the connection pool's memory
+
 ## Glossary
 ### SIMD (Single Input Multiple Data)
 	Refers to instructions that process multiple data at once. 
@@ -158,3 +200,6 @@ By constraining epoll to client FD only, we ensure continuity of the data stream
 - The delta between data produced by the client and consumed by CGI is greater than 64kb (i.e. poorly written cgi implementation);
 
 Given that these conditions are deliberately obtuse, treating them as fatal errors is acceptable
+
+## Post Mortem
+For now, I have
