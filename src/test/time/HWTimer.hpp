@@ -5,7 +5,6 @@
 #include <unistd.h>
 
 #include "core.hpp"
-#include "pure_functions.hpp"
 
 // If 0, it will run CPUID, and if that fails, calibration
 #define TSC_FREQUENCY 0
@@ -141,7 +140,7 @@ struct HWTimer {
 		return (u64)(((u128)1_G << 64) / tscFreq);
 	}
 
-	ATTR(static_inl) constexpr
+	ATTR(static_inl)
 	u64 tsc_to_ns(u64 tscTicks) {
 		return (u64)((u128)tscTicks * tscFactor >> 64);
 	}

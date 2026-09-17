@@ -42,3 +42,5 @@ A test should ideally be XY where X is variance and Y is range magnitude
 Cold and Hot, something that clears the cache, and something that requires load (to simulate real scenarios where the algorithm isn't being run solo)
 
 Investigate Clang Vectors
+
+15. Have Matlab like syntax in terminal, ex: 4:2:64 gives 4 8 12 .. 64

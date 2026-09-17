@@ -1,7 +1,5 @@
 #pragma once
 #include "core.hpp"
-#include "Span.hpp"
-#include "x86intrin.h"
 
 // global / local, constant / mutable, inline / 
 
@@ -25,8 +23,28 @@ struct Random {
 		return result ^ (result >> 31);
 	}
 
+	ATTR(static_inl)
+	f32 random_float(u64 randomValue) {
+		u32 intResult = 0x3F800000u | randomValue >> 41;	// Sets exponent to 127, so range: 1.0f ~ 2.0f
+		f32 floatResult;
+
+		MEMCPY_INLINE(&floatResult, &intResult, sizeof(f32));
+		return floatResult - 1.0f;
+	}
+
+	ATTR(static_inl)
+	f32x2 random_float2(u64 randomValue) {
+		u32x2 intResult = {0x3F800000, 0x3F800000};
+		intResult[0] |= randomValue >> 41;
+		intResult[1] |= (randomValue << 23) >> 41;	// Sets exponent to 127, so range: 1.0f ~ 2.0f
+
+		f32x2 floatResult;
+		MEMCPY_INLINE(&floatResult, &intResult, sizeof(floatResult));
+		return floatResult - 1.0f;
+	}
+
 	ATTR(static_inl, const)
 	u64 create_random_range(u64 randomValue, usize min, usize max) {
-		
+
 	}
 };

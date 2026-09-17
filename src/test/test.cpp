@@ -32,19 +32,31 @@ struct Sample {
 };
 
 static inline
-TestRange s_create_random_range() {
+TestRange s_create_random_range(u8* buffer) {
+	static u32 sizes[] = {
+		4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30,
+		32, 36, 40, 44, 48, 52, 56, 60,
+		64, 80, 96, 112, 128, 144, 160, 176, 192, 208, 224, 240,
+		256, 512, 768, 1024, 1280, 1536, 1792, 2048, 2304, 2560, 2816, 3072, 3328, 3584, 3840,
+		4_KB, 8_KB, 16_KB, 32_KB, 64_KB, 128_KB, 256_KB, 512_KB, 1_MB, 1_MB, 2_MB, 2_MB, 4_MB, 4_MB, 4_MB};
 	TestRange range = {};
 
 	u64 randomValue = Xoroshiro128::next();
 	MEMCPY_INLINE(&range, &randomValue, sizeof(u64));
+	float randomFloat = Random::random_float(randomValue);
+
 	range.start = CLAMP(range.start % 4_MB, 128, 4_MB - 128);
-	range.size = CLAMP(range.size % 4_MB, 1, 4_MB - 128);
+	range.size = sizes[range.size % ARRAY_SIZE(sizes)];
 	range.value = (u8)(randomValue >> 41);
+	range.value = MAX(range.value + 64u, 255);	// Biases it so that 75% of sentinels are valid
+
+	usize index = range.start + (usize)(range.size * randomFloat);
+	buffer[index] = range.value;
 	return range;
 }
 
 static inline
-Sample s_test_functions(char* str, usize iteration, TestRange range) {
+Sample s_test_functions(u8* str, usize iteration, TestRange range) {
 	Sample sample = {};
 	bool libcFirst = iteration & 1;
 	str += range.start;
@@ -73,57 +85,39 @@ Sample s_test_functions(char* str, usize iteration, TestRange range) {
 	return sample;
 }
 
-static inline
-void s_print_average_by_size_class(const Sample* samples, usize count) {
-	struct Average {
-		u64 libc;
-		u64 q32;
-		u64 count;
-	};
-
-	Average averages[WORD_BITS + 1] = {};
-
-	for (usize i = 0; i < count; i++) {
-		const Sample& sample = samples[i];
-		Average& average = averages[sample.sizeClass];
-
-		average.libc += sample.timeA;
-		average.q32 += sample.timeB;
-		average.count++;
-	}
-
-	std::cout << "size\tlibc\tq32\tq32/libc\n";
-
-	for (usize i = 0; i <= WORD_BITS; i++) {
-		const Average& average = averages[i];
-		if (!average.count)
-			continue;
-
-		double libc = (double)average.libc / average.count;
-		double q32 = (double)average.q32 / average.count;
-
-		std::cout << i << '\t'
-			<< libc << '\t'
-			<< q32 << '\t'
-			<< q32 / libc << '\n';
-	}
-}
-
-#define NUM_SAMPLES 256_KB
+#define NUM_SAMPLES 8192
+#define NUM_EPOCHS 4096
 
 int main() {
-	static char buffer[8_MB];
+	static u8 buffer[8_MB];
 	static TestRange ranges[NUM_SAMPLES];
 	static Sample samples[NUM_SAMPLES];
+	static u128 libcTotalTime[64] = {};
+	static u128 q32TotalTime[64] = {};
 
-	for (usize i = 0; i < sizeof(buffer); i += 8) {
-		u64 randomValue = Xoroshiro128::next();
-		MEMCPY_INLINE(buffer + i, &randomValue, sizeof(randomValue));
+	for (usize epoch = 0; epoch < NUM_EPOCHS; epoch++) {
+		for (usize i = 0; i < sizeof(buffer); i += 8) {
+			u64 randomValue = Xoroshiro128::next();
+			randomValue &= 0x7F7F7F7F7F7F7F7F;
+			MEMCPY_INLINE(buffer + i, &randomValue, sizeof(randomValue));
+		}
+		for (usize i = 0; i < NUM_SAMPLES; i++)
+			ranges[i] = s_create_random_range(buffer);
+		for (usize i = 0; i < NUM_SAMPLES; i++)
+			samples[i] = s_test_functions(buffer, i, ranges[i]);
+		for (usize i = 0; i < NUM_SAMPLES; i++) {
+			const Sample& sample = samples[i];
+			const u16 sizeClass = sample.sizeClass;
+			libcTotalTime[sizeClass] += sample.timeA;
+			q32TotalTime[sizeClass] += sample.timeB;
+		}
 	}
 
-	for (usize i = 0; i < NUM_SAMPLES; i++)
-		ranges[i] = s_create_random_range();
-	for (usize i = 0; i < NUM_SAMPLES; i++)
-		samples[i] = s_test_functions(buffer, i, ranges[i]);
-	s_print_average_by_size_class(samples, NUM_SAMPLES);
+	for (usize i = 0; i < 64; i++) {
+		if (libcTotalTime[i] == 0 || q32TotalTime[i] == 0)
+			continue;
+		u128 result = (q32TotalTime[i] << 32) / libcTotalTime[i];
+		double dblResult = (double) result / (double)(1ull << 32);
+		std::cout << dblResult << ", ";
+	}
 }
