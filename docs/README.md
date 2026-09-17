@@ -6,13 +6,15 @@ Initially, this server was written as part of the 42 curriculum that enforces se
 I might gradually update and modernize, but if you encounter something weird, it's probably the reason.
 
 ## Usage
-I have included a run bash script for easy testing
-./run, or ./run valgrind will build and run the server under those configs
-./run test executes the pre-built siege stress test
+The Makefile has a default run and valgrind run.
+I have also included a test bash script for easy testing
+(make fast run) or (make debug vrun) builds and runs the server with default config
+./test executes the pre-configured siege stress test and optionally takes an argument for connection slots
 
 Examples:
-	./run, then open a browser and go to 127.0.0.1:8080
-	./run valgrind, then in another terminal ./run test
+	make fast run, then open a browser and go to 127.0.0.1:8080
+	make debug vrun, then ./test in another terminal
+	make fast run, then ./test 255 in another terminal
 
 ### Configuration
 ```nginx

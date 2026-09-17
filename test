@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+set -e
+
+CONNECTIONS="${1:-50}"
+
+siege -b -c "$CONNECTIONS" -t 30S -f assets/www/game/siege/siege_urls.txt
