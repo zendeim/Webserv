@@ -39,7 +39,7 @@ CONNECTION_INL
 
 CONNECTION_INL
 (isize) redirect_setup(Epoll& epoll, Status::Code code) {
-	const Span statusStr = Status::s_status_str(code);
+	const Span statusStr = Status::get_status_str(code);
 	const Span target = req.location->get_redirect_target();
 	bodySize = 0;
 	options &= ~(u16)Options::KEEP_ALIVE;

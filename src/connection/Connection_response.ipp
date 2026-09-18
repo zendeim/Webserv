@@ -58,7 +58,7 @@ CONNECTION_INL
 	}
 	ASSERT(sendBuffer.readPos == headerEnd, "CGI header ended at an unexpected offset");
 
-	Span statusStr = Status::s_status_str(code);
+	Span statusStr = Status::get_status_str(code);
 
 	tmpBuffer.append("Connection: close\r\n\r\n");
 	tmpBuffer.append(sendBuffer.get_span());
@@ -75,7 +75,7 @@ CONNECTION_INL
 
 CONNECTION_INL
 (void) build_header(Status::Code code) {
-	Span statusStr = Status::s_status_str(code);
+	Span statusStr = Status::get_status_str(code);
 
 	sendBuffer.append("HTTP/1.1 ");
 	sendBuffer.append(statusStr);
@@ -97,7 +97,7 @@ CONNECTION_INL
 
 CONNECTION_INL
 (void) build_error_header(Status::Code code) {
-	Span statusStr = Status::s_status_str(code);
+	Span statusStr = Status::get_status_str(code);
 	Span errorPage = cfg->errorPages[Status::s_get_page_index(code)];
 
 	options &= ~(u16)Options::KEEP_ALIVE;

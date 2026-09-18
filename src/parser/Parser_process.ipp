@@ -134,7 +134,7 @@ PARSER_INL
 	Bitmap configured = {};
 
 	for (usize index = 0; index < Status::errorPageCount; index++)
-		server.errorPages[index] = Status::s_error_page(index);
+		server.errorPages[index] = Status::get_status_page(index);
 	if (folder.ptr == NULL)
 		return;
 	s_build_error_page_path(pathBuffer, server.serverRoot, folder);

@@ -2,196 +2,141 @@
 
 #include "core.hpp"
 #include "Span.hpp"
-#include "Status_tables.inl"
-
 /*
 	Status stores a u16 offset into its static string catalog.  Every
 	status record is length-prefixed and NUL-terminated.  Error records append
 	a length-prefixed, NUL-terminated default page immediately after the status.
 
-	Index 1 is unset and index 2 is invalid.  Both resolve to empty strings.
+	Index 1 is unset and index 2 is invalid
 */
+
 struct Status {
-	static const usize errorPageCount = 32 + 12;
-	static inline char strings[] = HTTP_STATUS_STRINGS;
-	u16 index;
-
-	#pragma push_macro("SUBS")
-	#pragma push_macro("SUBP")
-	#undef SUBS
-	#undef SUBP
-
-	#define SUBS(code, next) (i##next - sizeof(HTTP_STATUS(code)) - 1)
-	#define SUBP(code, next) (i##next - sizeof(HTTP_STATUS(code)) \
-		- sizeof(HTTP_STATUS_DEFAULT_PAGE(code)) - 2)
-
-	enum Code {
-		ok = 0, unset = 1, ixxx = 2, i511 = sizeof(HTTP_STATUS_STRINGS) - sizeof(HTTP_STATUS(511))
-			- sizeof(HTTP_STATUS_DEFAULT_PAGE(511)) - 2,
-		i510 = SUBP(510, 511), i508 = SUBP(508, 510), i507 = SUBP(507, 508), i506 = SUBP(506, 507),
-		i505 = SUBP(505, 506), i504 = SUBP(504, 505), i503 = SUBP(503, 504), i502 = SUBP(502, 503),
-		i501 = SUBP(501, 502), i500 = SUBP(500, 501), i431 = SUBP(431, 500), i429 = SUBP(429, 431),
-		i428 = SUBP(428, 429), i426 = SUBP(426, 428), i425 = SUBP(425, 426), i424 = SUBP(424, 425),
-		i423 = SUBP(423, 424), i422 = SUBP(422, 423), i421 = SUBP(421, 422), i418 = SUBP(418, 421),
-		i417 = SUBP(417, 418), i416 = SUBP(416, 417), i415 = SUBP(415, 416), i414 = SUBP(414, 415),
-		i413 = SUBP(413, 414), i412 = SUBP(412, 413), i411 = SUBP(411, 412), i410 = SUBP(410, 411),
-		i409 = SUBP(409, 410), i408 = SUBP(408, 409), i407 = SUBP(407, 408), i406 = SUBP(406, 407),
-		i405 = SUBP(405, 406), i404 = SUBP(404, 405), i403 = SUBP(403, 404), i402 = SUBP(402, 403),
-		i401 = SUBP(401, 402), i400 = SUBP(400, 401), i308 = SUBS(308, 400), i307 = SUBS(307, 308),
-		i306 = SUBS(306, 307), i305 = SUBS(305, 306), i304 = SUBS(304, 305), i303 = SUBS(303, 304),
-		i302 = SUBS(302, 303), i301 = SUBS(301, 302), i300 = SUBS(300, 301), i226 = SUBS(226, 300),
-		i208 = SUBS(208, 226), i207 = SUBS(207, 208), i206 = SUBS(206, 207), i205 = SUBS(205, 206),
-		i204 = SUBS(204, 205), i203 = SUBS(203, 204), i202 = SUBS(202, 203), i201 = SUBS(201, 202),
-		i200 = SUBS(200, 201), i104 = SUBS(104, 200), i103 = SUBS(103, 104), i102 = SUBS(102, 103),
-		i101 = SUBS(101, 102), i100 = SUBS(100, 101)
+	static inline const char strings[64][37] = {
+		"\x0C" "100 Continue", "\x17" "101 Switching Protocols", "\x0E" "102 Processing", "\x0F" "103 Early Hints",
+		"\x1F" "104 Upload Resumption Supported", "\x06" "200 OK", "\x0B" "201 Created", "\x0C" "202 Accepted",
+		"\x21" "203 Non-Authoritative Information", "\x0E" "204 No Content", "\x11" "205 Reset Content", "\x13" "206 Partial Content",
+		"\x10" "207 Multi-Status", "\x14" "208 Already Reported", "\x0B" "226 IM Used", "\x14" "300 Multiple Choices",
+		"\x15" "301 Moved Permanently", "\x09" "302 Found", "\x0D" "303 See Other", "\x10" "304 Not Modified",
+		"\x0D" "305 Use Proxy", "\x0C" "306 (Unused)", "\x16" "307 Temporary Redirect", "\x16" "308 Permanent Redirect",
+		"\x0F" "400 Bad Request", "\x10" "401 Unauthorized", "\x14" "402 Payment Required", "\x0D" "403 Forbidden",
+		"\x0D" "404 Not Found", "\x16" "405 Method Not Allowed", "\x12" "406 Not Acceptable", "\x21" "407 Proxy Authentication Required",
+		"\x13" "408 Request Timeout", "\x0C" "409 Conflict", "\x08" "410 Gone", "\x13" "411 Length Required",
+		"\x17" "412 Precondition Failed", "\x15" "413 Content Too Large", "\x10" "414 URI Too Long", "\x1A" "415 Unsupported Media Type",
+		"\x19" "416 Range Not Satisfiable", "\x16" "417 Expectation Failed", "\x0C" "418 (Unused)", "\x17" "421 Misdirected Request",
+		"\x19" "422 Unprocessable Content", "\x0A" "423 Locked", "\x15" "424 Failed Dependency", "\x0D" "425 Too Early",
+		"\x14" "426 Upgrade Required", "\x19" "428 Precondition Required", "\x15" "429 Too Many Requests", "\x23" "431 Request Header Fields Too Large",
+		"\x21" "451 Unavailable For Legal Reasons", "\x19" "500 Internal Server Error", "\x13" "501 Not Implemented", "\x0F" "502 Bad Gateway",
+		"\x17" "503 Service Unavailable", "\x13" "504 Gateway Timeout", "\x1E" "505 HTTP Version Not Supported", "\x1B" "506 Variant Also Negotiates",
+		"\x18" "507 Insufficient Storage", "\x11" "508 Loop Detected", "\x10" "510 Not Extended", "\x23" "511 Network Authentication Required",
 	};
 
-	#pragma pop_macro("SUBP")
-	#pragma pop_macro("SUBS")
+	#define HTTP_PAGE(code, reason) \
+		"<!doctype html><meta charset=utf-8>" \
+		"<title>" code " " reason "</title>" \
+		"<style>body{font:16px sans-serif;text-align:center;padding:10vh}" \
+		"h1{font-size:4em;margin:0}</style>" \
+		"<h1>" code "</h1><p>" reason "</p></html>"
 
-	ATTR(static_inl, pure) u16 s_index(usize div, usize rem) {
-		static const u16 offsets[160] = {
-			i100, i101, i102, i103, i104, ixxx, ixxx, ixxx,
-			ixxx, ixxx, ixxx, ixxx, ixxx, ixxx, ixxx, ixxx,
-			ixxx, ixxx, ixxx, ixxx, ixxx, ixxx, ixxx, ixxx,
-			ixxx, ixxx, ixxx, ixxx, ixxx, ixxx, ixxx, ixxx,
-			i200, i201, i202, i203, i204, i205, i206, i207,
-			i208, ixxx, ixxx, ixxx, ixxx, ixxx, ixxx, ixxx,
-			ixxx, ixxx, ixxx, ixxx, ixxx, ixxx, ixxx, ixxx,
-			ixxx, ixxx, i226, ixxx, ixxx, ixxx, ixxx, ixxx,
-			i300, i301, i302, i303, i304, i305, i306, i307,
-			i308, ixxx, ixxx, ixxx, ixxx, ixxx, ixxx, ixxx,
-			ixxx, ixxx, ixxx, ixxx, ixxx, ixxx, ixxx, ixxx,
-			ixxx, ixxx, ixxx, ixxx, ixxx, ixxx, ixxx, ixxx,
-			i400, i401, i402, i403, i404, i405, i406, i407,
-			i408, i409, i410, i411, i412, i413, i414, i415,
-			i416, i417, i418, ixxx, ixxx, i421, i422, i423,
-			i424, i425, i426, ixxx, i428, i429, ixxx, i431,
-			i500, i501, i502, i503, i504, i505, i506, i507,
-			i508, ixxx, i510, i511, ixxx, ixxx, ixxx, ixxx,
-			ixxx, ixxx, ixxx, ixxx, ixxx, ixxx, ixxx, ixxx,
-			ixxx, ixxx, ixxx, ixxx, ixxx, ixxx, ixxx, ixxx
-		};
-		if (rem >= 32)
-			return (u16)ixxx;
-		return offsets[div * 32 + rem];
+	static inline const char pages[39][256] = {
+		"\xC8" HTTP_PAGE("400", "Bad Request"), "\xCA" HTTP_PAGE("401", "Unauthorized"),
+		"\xD2" HTTP_PAGE("402", "Payment Required"), "\xC4" HTTP_PAGE("403", "Forbidden"),
+		"\xC4" HTTP_PAGE("404", "Not Found"), "\xD6" HTTP_PAGE("405", "Method Not Allowed"),
+		"\xCE" HTTP_PAGE("406", "Not Acceptable"), "\xEC" HTTP_PAGE("407", "Proxy Authentication Required"),
+		"\xD0" HTTP_PAGE("408", "Request Timeout"), "\xC2" HTTP_PAGE("409", "Conflict"),
+		"\xBA" HTTP_PAGE("410", "Gone"), "\xD0" HTTP_PAGE("411", "Length Required"),
+		"\xD8" HTTP_PAGE("412", "Precondition Failed"), "\xD4" HTTP_PAGE("413", "Content Too Large"),
+		"\xCA" HTTP_PAGE("414", "URI Too Long"), "\xDE" HTTP_PAGE("415", "Unsupported Media Type"),
+		"\xDC" HTTP_PAGE("416", "Range Not Satisfiable"), "\xD6" HTTP_PAGE("417", "Expectation Failed"),
+		"\xD8" HTTP_PAGE("421", "Misdirected Request"), "\xDC" HTTP_PAGE("422", "Unprocessable Content"),
+		"\xBE" HTTP_PAGE("423", "Locked"), "\xD4" HTTP_PAGE("424", "Failed Dependency"),
+		"\xC4" HTTP_PAGE("425", "Too Early"), "\xD2" HTTP_PAGE("426", "Upgrade Required"),
+		"\xDC" HTTP_PAGE("428", "Precondition Required"), "\xD4" HTTP_PAGE("429", "Too Many Requests"),
+		"\xF0" HTTP_PAGE("431", "Request Header Fields Too Large"), "\xEC" HTTP_PAGE("451", "Unavailable For Legal Reasons"),
+		"\xDC" HTTP_PAGE("500", "Internal Server Error"), "\xD0" HTTP_PAGE("501", "Not Implemented"),
+		"\xC8" HTTP_PAGE("502", "Bad Gateway"), "\xD8" HTTP_PAGE("503", "Service Unavailable"),
+		"\xD0" HTTP_PAGE("504", "Gateway Timeout"), "\xE6" HTTP_PAGE("505", "HTTP Version Not Supported"),
+		"\xE0" HTTP_PAGE("506", "Variant Also Negotiates"), "\xDA" HTTP_PAGE("507", "Insufficient Storage"),
+		"\xCC" HTTP_PAGE("508", "Loop Detected"), "\xCA" HTTP_PAGE("510", "Not Extended"),
+		"\xF0" HTTP_PAGE("511", "Network Authentication Required"),
+	};
+	#undef HTTP_PAGE
+
+	enum Code : u8 {
+		unset = 0, ok = 65, invalid = 255,
+		i100 = ((void)"100 Continue", 1), i101 = ((void)"101 Switching Protocols", 2), i102 = ((void)"102 Processing", 3), i103 = ((void)"103 Early Hints", 4),
+		i104 = ((void)"104 Upload Resumption Supported", 5), i200 = ((void)"200 OK", 6), i201 = ((void)"201 Created", 7), i202 = ((void)"202 Accepted", 8),
+		i203 = ((void)"203 Non-Authoritative Information", 9), i204 = ((void)"204 No Content", 10), i205 = ((void)"205 Reset Content", 11), i206 = ((void)"206 Partial Content", 12),
+		i207 = ((void)"207 Multi-Status", 13), i208 = ((void)"208 Already Reported", 14), i226 = ((void)"226 IM Used", 15), i300 = ((void)"300 Multiple Choices", 16),
+		i301 = ((void)"301 Moved Permanently", 17), i302 = ((void)"302 Found", 18), i303 = ((void)"303 See Other", 19), i304 = ((void)"304 Not Modified", 20),
+		i305 = ((void)"305 Use Proxy", 21), i306 = ((void)"306 (Unused)", 22), i307 = ((void)"307 Temporary Redirect", 23), i308 = ((void)"308 Permanent Redirect", 24),
+		i400 = ((void)"400 Bad Request", 25), i401 = ((void)"401 Unauthorized", 26), i402 = ((void)"402 Payment Required", 27), i403 = ((void)"403 Forbidden", 28),
+		i404 = ((void)"404 Not Found", 29), i405 = ((void)"405 Method Not Allowed", 30), i406 = ((void)"406 Not Acceptable", 31), i407 = ((void)"407 Proxy Authentication Required", 32),
+		i408 = ((void)"408 Request Timeout", 33), i409 = ((void)"409 Conflict", 34), i410 = ((void)"410 Gone", 35), i411 = ((void)"411 Length Required", 36),
+		i412 = ((void)"412 Precondition Failed", 37), i413 = ((void)"413 Content Too Large", 38), i414 = ((void)"414 URI Too Long", 39), i415 = ((void)"415 Unsupported Media Type", 40),
+		i416 = ((void)"416 Range Not Satisfiable", 41), i417 = ((void)"417 Expectation Failed", 42), i418 = ((void)"418 (Unused)", 43), i421 = ((void)"421 Misdirected Request", 44),
+		i422 = ((void)"422 Unprocessable Content", 45), i423 = ((void)"423 Locked", 46), i424 = ((void)"424 Failed Dependency", 47), i425 = ((void)"425 Too Early", 48),
+		i426 = ((void)"426 Upgrade Required", 49), i428 = ((void)"428 Precondition Required", 50), i429 = ((void)"429 Too Many Requests", 51), i431 = ((void)"431 Request Header Fields Too Large", 52),
+		i451 = ((void)"451 Unavailable For Legal Reasons", 53), i500 = ((void)"500 Internal Server Error", 54), i501 = ((void)"501 Not Implemented", 55), i502 = ((void)"502 Bad Gateway", 56),
+		i503 = ((void)"503 Service Unavailable", 57), i504 = ((void)"504 Gateway Timeout", 58), i505 = ((void)"505 HTTP Version Not Supported", 59), i506 = ((void)"506 Variant Also Negotiates", 60),
+		i507 = ((void)"507 Insufficient Storage", 61), i508 = ((void)"508 Loop Detected", 62), i510 = ((void)"510 Not Extended", 63), i511 = ((void)"511 Network Authentication Required", 64),
+	};
+
+	ATTR(static_inl, pure)
+	Code num_to_status(usize number) {
+		alignas(64) struct {
+			u64 bitmap[7] = {
+				0b0000000000000000000000000000000000000000000000000000000000011111, // 100-163
+				0b0100000000000000000111111111000000000000000000000000000000000000, // 164-227
+				0b0000000000000000000000000000000000000000000000000000000000000000, // 228-291
+				0b0000000000000000000000000000000000000000000000011111111100000000, // 292-355
+				0b0111111111111111111100000000000000000000000000000000000000000000, // 356-419
+				0b0000000000000000000000000000000010000000000000000000101101111110, // 420-483
+				0b0000000000000000000000000000000000001101111111110000000000000000, // 484-547
+			};
+			u8 totalPopcount[8] = {1, 6, 16, 0, 25, 44, 54, 0};	// Cumulative popcount of each LUT entry
+		}	static const lut;
+
+		number -= 100;
+		if (number >= 412)
+			return invalid;
+
+		usize div = number / 64;		// div indexes the LUT
+		usize rem = number % 64;		// rem is the bit index within that LUT segment
+		u64 word = lut.bitmap[div];
+		u64 bit = 1ull << rem;
+		if (word & bit)
+			return (Code)(POPCOUNT(word & (bit - 1)) + lut.totalPopcount[div]);
+		return invalid;
 	}
 
-	ATTR(static_inl, const) u16 s_num_to_code(usize number) {
-		if (number - 100 >= 500)
-			return ixxx;
-		const usize div = number / 100;
-		return s_index(div - 1, number - div * 100);
-	}
-
-	ATTR(static_inl, pure) Code s_str_to_code(const char* str) {
+	ATTR(static_inl, pure)
+	Code str_to_status(const char* str) {
 		if (str[0] < '1' || str[0] > '5' ||
 			str[1] < '0' || str[1] > '9' ||
 			str[2] < '0' || str[2] > '9')
-				return ixxx;
+				return invalid;
 
-		const usize div = (usize)(str[0] - '1');
-		const usize rem = 10 * (usize)(str[1] - '0') + (usize)(str[2] - '0');
-		return (Code)s_index(div, rem);
+		usize number = (usize)(str[0] - '0') * 100;
+		number += 10 * (usize)(str[1] - '0') + (usize)(str[2] - '0');
+		return num_to_status(number);
 	}
 
-	ATTR(static_inl, pure) usize s_code_to_index(Code code) {
-		char* ptr = strings + (usize)code;
-		usize first = (u8)(ptr[0] - '0');
-		usize second = (u8)(ptr[1] - '0');
-		usize third = (u8)(ptr[2] - '0');
-		return first * 32 + second * 10 + third;
+	ATTR(static_inl, pure)
+	Span get_status_str(Code code) {
+		return {(char*)(strings[code] + 1), (u8)strings[code][0]};
 	}
 
-	ATTR(inl, pure) usize get_page_index() const {
-		if (index < Status::i400)
-			return SIZE_MAX;
-		return s_code_to_index((Code)index) - (32ul * 4);
+	ATTR(static_inl, pure)
+	Span get_default_page(Code code) {
+		return {(char*)(pages[code] + 1), (u8)pages[code][0]};
 	}
 
-	ATTR(static_inl, pure) usize s_get_page_index(Code code) {
-		if (code < Status::i400)
-			return SIZE_MAX;
-		return s_code_to_index(code) - (32ul * 4);
-	}
-
-	ATTR(inl, pure) Span status_str() const {
-		Span result;
-		result.ptr = strings + (usize)index;
-		result.size = (u8)result.ptr[-1];
-		return result;
-	}
-
-	ATTR(static_inl, pure) Span s_status_str(Status::Code code) {
-		Span result;
-		result.ptr = strings + (u16)code;
-		result.size = (u8)result.ptr[-1];
-		return result;
-	}
-
-	ATTR(inl, pure) Span error_page() const {
-		Span result;
-		result.ptr = strings + (usize)index;
-		result.size = (u8)result.ptr[-1];
-
-		result.ptr += result.size + 2;
-		result.size = (u8)result.ptr[-1];
-		return result;
-	}
-
-	ATTR(static_inl, pure) Span s_error_page(usize number) {
-		const usize offset = s_index(3 + (number >= 32), number - (number >= 32 ? 32 : 0));
-
-		Span tmp;
-		tmp.ptr = strings + offset;
-		tmp.size = (u8)tmp.ptr[-1];
-		tmp.ptr += tmp.size + 2;
-		tmp.size = (u8)tmp.ptr[-1];
-		return tmp;
-	}
-
-	ATTR(static_inl, pure) Span s_error_page(Status::Code code) {
-		Span result;
-		result.ptr = strings + (u16)code;
-		result.size = (u8)result.ptr[-1];
-
-		result.ptr += result.size + 2;
-		result.size = (u8)result.ptr[-1];
-		return result;
-	}
-
-	ATTR(inl) void clear() {
-		index = unset;
-	}
-
-	// Utilities
-	ATTR(inl, pure) usize number() const {
-		const char* str = status_str().ptr;
-		usize number = 100 * (usize)(str[0] - '0');
-		number += 10 * (usize)(str[1] - '0');
-		number += (usize)(str[2] - '0');
-		return number;
-	}
-
-	ATTR(inl, pure) bool is_valid() const { return index > ixxx; }
-
-	ATTR(inl, pure) bool is_informational() const { return index >= i100 && index < i200; }
-
-	ATTR(inl, pure) bool is_success() const { return index >= i200 && index < i300; }
-
-	ATTR(inl, pure) bool is_redirect() const { return index >= i300 && index < i400; }
-
-	ATTR(inl, pure) bool is_client_error() const { return index >= i400 && index < i500; }
-
-	ATTR(inl, pure) bool is_server_error() const { return index >= i500; }
-
-	ATTR(inl, pure) bool is_error() const { return index >= i400; }
-
-	ATTR(inl, pure) bool is_set() const { return index != unset; }
-
-	ATTR(inl, pure) bool operator==(Code code) const { return index == (u16)code; }
-	ATTR(inl, pure) bool operator!=(Code code) const { return index != (u16)code; }
+	ATTR(static_inl, const) bool is_valid(Code idx) { return (idx - 1) <= 64; }
+	ATTR(static_inl, const) bool is_informational(Code idx) { return idx >= i100 && idx < i200; }
+	ATTR(static_inl, const) bool is_success(Code idx) { return idx >= i200 && idx < i300; }
+	ATTR(static_inl, const) bool is_redirect(Code idx) { return idx >= i300 && idx < i400; }
+	ATTR(static_inl, const) bool is_client_error(Code idx) { return idx >= i400 && idx < i500; }
+	ATTR(static_inl, const) bool is_server_error(Code idx) { return idx >= i500; }
+	ATTR(static_inl, const) bool is_error(Code idx) { return idx >= i400; }
+	ATTR(static_inl, const) bool is_set(Code idx) { return idx != unset; }
 };
-
-STATIC_ASSERT(sizeof(HTTP_STATUS_STRINGS) <= UINT16_MAX);
-STATIC_ASSERT(sizeof(Status) == sizeof(u16));
