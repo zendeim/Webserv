@@ -2,16 +2,8 @@
 #include <unistd.h>
 
 #include "core.hpp"
-#include "config.hpp"
-#include "tables.hpp"
 #include "Array.hpp"
 #include "Span.hpp"
-
-/*
-	Arena does not own its storage.  It only manages a caller-provided byte
-	range.  Alpha uses connection storage for parser temporaries; beta uses
-	configuration storage for values that outlive parsing.
-*/
 
 struct Arena {
 	u8* ptr;
@@ -62,20 +54,3 @@ struct Arena {
 		return result;
 	}
 };
-
-	// template <typename Type>
-	// Span32 compress_span(const Array<Type>& array, usize length) {
-	// 	const u32 offset = alloc(length, 1);
-	// 	if (offset == UINT32_MAX)
-	// 		_exit(1);
-	// 	Span32 result = {(u32)((char*)mptr(offset) - (char*)array.ptr), (u32)length};
-	// 	array.extract(result).ptr[length] = '\0';
-	// 	return result;
-	// }
-
-	// template <typename Type>
-	// Span32 compress_span(const Array<Type>& array, const Span& source) {
-	// 	const Span32 result = compress_span(array, source.size);
-	// 	MEMCPY(array.extract(result).ptr, source.ptr, source.size);
-	// 	return result;
-	// }

@@ -71,6 +71,11 @@ CONNECTION_INL
 
 CONNECTION_INL
 (isize) get_autoindex_setup(Epoll& epoll) {
+	static const char header[] = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n"
+		"Connection: close\r\n\r\n<html><head><title>Index of ";
+	static const char body[] = "</title></head><body><h1>Index of ";
+	static const char footer[] = "</h1><hr><pre>\n<a href=\"../\">../</a>\n";
+
 	Buffer64 buffer = {};
 	contentType = Mime::HTML;
 	options &= ~(u16)Options::KEEP_ALIVE;
@@ -78,15 +83,15 @@ CONNECTION_INL
 	// TODO: Might not be needed if autoindex doesn't transform buffers
 	Span targetEncoded = buffer.append_html_encoded(req.target.ptr, req.target.size);
 
-	const usize fixedSize = sizeof(HTTP_INDEX_HEADER HTTP_INDEX_MIDDLE HTTP_INDEX_TAIL);
+	const usize fixedSize = sizeof(header) + sizeof(body) + sizeof(footer) - 2;
 	if (fixedSize + targetEncoded.size * 2 > sizeof(sendBuffer.data))
 		return flush_setup_close(epoll, Status::i414);
 	activate_streaming(Mode::AUTOINDEX);
 	recvBuffer.clear();	// Reuse receive storage for directory records, response closes the connection
-	sendBuffer.append(HTTP_INDEX_HEADER);
+	sendBuffer.append(header);
 	sendBuffer.append(targetEncoded);
-	sendBuffer.append(HTTP_INDEX_MIDDLE);
+	sendBuffer.append(body);
 	sendBuffer.append(targetEncoded);
-	sendBuffer.append(HTTP_INDEX_TAIL);
+	sendBuffer.append(footer);
 	return upload_directory(epoll);
 }

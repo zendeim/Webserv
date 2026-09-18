@@ -1,8 +1,9 @@
 #pragma once
 
 #include "core.hpp"
-#include "tables.hpp"
 #include "Span.hpp"
+#include "Status_tables.inl"
+
 /*
 	Status stores a u16 offset into its static string catalog.  Every
 	status record is length-prefixed and NUL-terminated.  Error records append

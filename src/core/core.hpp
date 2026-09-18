@@ -30,6 +30,7 @@
 // const: Function depends only on its arguments (doesn't read from memory)
 // pure: Function produces no observable side effects (may read from memory)
 // flatten: Function calls inside this function are aggressively inlined
+// __attribute__((section("compressed")))
 
 #define UNREACHABLE()	__builtin_unreachable()
 #define LIKELY(x)		__builtin_expect(!!(x), 1)

@@ -83,6 +83,7 @@ BUFFER_INL
 }
 
 // <a href="filename[256]">filename[64]</a>    02-Dec-2004 18:46    241476
+
 BUFFER_INL
 (Span) append_entry(int directoryFd, char* name) {
 	char* optr = (char*)data + writePos;
@@ -92,7 +93,7 @@ BUFFER_INL
 	if (LITCMP(entry.ptr, ".\0") == 0 || LITCMP(entry.ptr, "..\0") == 0)
 		return {optr, 0};
 	if (fstatat(directoryFd, name, &st, 0))
-		return append(HTTP_INDEX_PERMISSION);
+		return append("<a href=\"\">--- Privileged access ---</a>\n");
 
 	usize fileSize = S_ISDIR(st.st_mode) ? 0 : (usize)st.st_size;
 	char buf[32];

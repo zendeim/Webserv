@@ -3,7 +3,6 @@
 #include <dirent.h>
 
 #include "core.hpp"
-#include "tables.hpp"
 #include "webserv.hpp"
 #include "Span.hpp"
 #include "pure_functions.hpp"

@@ -85,6 +85,7 @@ CONNECTION_INL
 	char* argv[3];
 	int fdIn[2], fdOut[2];
 	Mode nextMode = Mode::CGI;
+	pid_t pid;
 	if (options & Options::POST)
 		nextMode = (options & Options::FIXED_LENGTH) ? Mode::CGI_FIXED : Mode::CGI_CHUNKED;
 
@@ -95,16 +96,16 @@ CONNECTION_INL
 		goto ErrorCloseInput;
 	if (fcntl(fdIn[1], F_SETFL, O_NONBLOCK) == -1 || fcntl(fdOut[0], F_SETFL, O_NONBLOCK) == -1)
 		goto ErrorCloseOutput;
-	processId = fork();
-	if (processId < 0)
+	pid = fork();
+	if (pid < 0)
 		goto ErrorCloseOutput;
-	if (processId == 0)
+	if (pid == 0)
 		s_exec_script(argv, Environment::envp, fdIn, fdOut, chdirPath);
-
 	close(fdIn[0]);
 	close(fdOut[1]);
 	readFd = fdOut[0];
 	writeFd = fdIn[1];
+	processId = pid;
 	activate_streaming(nextMode);
 	sendBuffer.init(256, 256, 256);	// Leave room for the HTTP status and connection headers
 	if (nextMode == Mode::CGI_FIXED)

@@ -1,73 +1,7 @@
 #pragma once
+
 #include "core.hpp"
-#include "config.hpp"
-
-// #define COMPRESSED
-//     __attribute__((section("compressed")))
-
-// COMPRESSED int x;
-// COMPRESSED Foo foo;
-// COMPRESSED char buffer[4096];
-// extern "C" {
-// 	extern char __start_compressed[];
-// 	extern char __stop_compressed[];
-// }
-
-enum e_ascii {
-	ASCII_DIGITS      = 9u,   // 0-9 map to 0-9
-	ASCII_HEX         = 15u,  // A-F / a-f map to 10-16
-	ASCII_LETTERS     = 35u,  // A-Z / a-z map to 10-35
-	ASCII_IDENT       = 36u,  // 0-36: (_)
-	ASCII_URL_VALID   = 39u,  // 0-39: (-) (.) (~)
-	ASCII_RFC_SYMBOLS = 54u,  // 0-54: (!) ($) (%) (() ()) (*) (+) (,) (/) (:) (;) (=) (@) (&) (')
-	ASCII_HTML_ESCAPE = 57u,  // 53-57: (&) (') (") (<) (>)
-	ASCII_SYMBOLS     = 67u,  // 36-67  (#) (?) ([) (\) (]) (^) (`) ({) (|) (})
-	ASCII_SPACE       = 98u,
-	ASCII_CONTROL     = 99u,
-	ASCII_INVALID     = 255u,
-	ASCII_HTML_ESCAPE_START = 53u	// Used in the HTML_ESCAPE lut
-};
-
-// 36 (_)  37 (-)  38 (.)  39 (~)  40 (!)  41 ($)  42 (%)  43 (()
-// 44 ())  45 (*)  46 (+)  47 (,)  48 (/)  49 (:)  50 (;)  51 (=)
-// 52 (@)  53 (&)  54 (')  55 (")  56 (<)  57 (>)  58 (#)  59 (?)
-// 60 ([)  61 (\)  62 (])  63 (^)  64 (`)  65 ({)  66 (|)  67 (})
-
-// Tables
-#ifdef MAIN_FILE
-	const u8 gAsciiLut[256] = {
-		255, 99, 99, 99, 99, 99, 99, 99, 99, 98, 98, 98, 98, 98, 99, 99, // 0x00-0x0F
-		99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, // 0x10-0x1F
-		//     SP   !   "   #   $   %   &   '   (   )   *   +   ,   -   .   /
-		/*20*/ 98, 40, 55, 58, 41, 42, 53, 54, 43, 44, 45, 46, 47, 37, 38, 48,
-		//      0   1   2   3   4   5   6   7   8   9   :   ;   <   =   >   ?
-		/*30*/  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 49, 50, 56, 51, 57, 59,
-		//      @   A   B   C   D   E   F   G   H   I   J   K   L   M   N   O
-		/*99*/ 52, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
-		//      P   Q   R   S   T   U   V   W   X   Y   Z   [   \   ]   ^   _
-		/*50*/ 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 60, 61, 62, 63, 36,
-		//      `   a   b   c   d   e   f   g   h   i   j   k   l   m   n   o
-		/*60*/ 64, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
-		//      p   q   r   s   t   u   v   w   x   y   z   {   |   }   ~  DEL
-		/*70*/ 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 65, 66, 67, 39, 99,
-
-		255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255
-	};
-#else
-	extern const u8 gAsciiLut[256];
-#endif
-
-#define HTTP_INDEX_HEADER "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n<html><head><title>Index of "
-#define HTTP_INDEX_MIDDLE "</title></head><body><h1>Index of "
-#define HTTP_INDEX_TAIL "</h1><hr><pre>\n<a href=\"../\">../</a>\n"
-#define HTTP_INDEX_PERMISSION "<a href=\"\">--- Privileged access ---</a>\n"
+#include "Span.hpp"
 
 #define HTTP_STATUS_100 "100 Continue"
 #define HTTP_STATUS_101 "101 Switching Protocols"
@@ -186,8 +120,6 @@ enum e_ascii {
 
 #define HTTP_STATUS_DEFAULT_PAGE(code) \
 	HTTP_STATUS_PAGE(STRINGIFY(code), HTTP_STATUS_REASON(code))
-
-#define HTTP_STATUS_PAGE_MAX_SIZE 255
 
 #define HTTP_STATUS_STRINGS \
 	"\0\0\0\0\0\0\0\0" \

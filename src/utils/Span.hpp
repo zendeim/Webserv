@@ -2,7 +2,6 @@
 #include <unistd.h>
 
 #include "core.hpp"
-#include "tables.hpp"
 
 struct Span {
 	char* ptr;
