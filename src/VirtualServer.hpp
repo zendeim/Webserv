@@ -21,7 +21,7 @@ struct Location {
 	Span16	uploadStore;
 	Span16	cgiBlock;
 	Span16	redirectTarget;
-	Status	redirectStatus;
+	Status::Code redirectStatus;
 	u8		methods;
 	bool	autoindex;
 

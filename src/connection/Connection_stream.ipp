@@ -68,7 +68,7 @@ CONNECTION_INL
 	const isize code = read_chunked(epoll);
 	if (code < 0)
 		return -1;
-	if (code >= Status::i400)
+	if (Status::is_error((Status::Code)code))
 		return flush_setup_close(epoll, (Status::Code)code);
 	const usize bytesToWrite = recvBuffer.scanPos - recvBuffer.readPos;
 	if (bytesToWrite != 0 && recvBuffer.write_all(writeFd, bytesToWrite) < 0)

@@ -13,7 +13,7 @@ CONNECTION_INL
 	const usize readEnd = sendBuffer.readPos + totalLength;
 	Span field = sendBuffer.find_char(':');
 	if (field.ptr == NULL)
-		return Status::ixxx;
+		return Status::invalid;
 
 	const Field fieldIndex = fn::match_field(field);
 	if (fieldIndex == Field::CONNECTION)
@@ -26,9 +26,9 @@ CONNECTION_INL
 
 	Span value = sendBuffer.get_field_value(readEnd);
 	if (value.ptr == NULL)
-		return Status::ixxx;	// Rejects empty values
+		return Status::invalid;	// Rejects empty values
 
-	Status::Code code = Status::s_str_to_code(value.ptr);	// TODO: change the check to be if OK not if error
+	Status::Code code = Status::str_to_status(value.ptr);	// TODO: change the check to be if OK not if error
 	return code;
 }
 
@@ -50,8 +50,8 @@ CONNECTION_INL
 			break;
 		}
 		Status::Code lineCode = parse_cgi_line(tmpBuffer);
-		if (lineCode == Status::ixxx)
-			return Status::ixxx;
+		if (lineCode == Status::invalid)
+			return Status::invalid;
 		if (lineCode != Status::ok)
 			code = lineCode;
 		sendBuffer.readPos = sendBuffer.scanPos;
@@ -66,7 +66,7 @@ CONNECTION_INL
 	tmpBuffer.prepend(statusStr);
 	tmpBuffer.prepend("HTTP/1.1 ");
 	if (tmpBuffer.size() > sendBuffer.capacity())
-		return Status::ixxx;
+		return Status::invalid;
 	sendBuffer.clear();
 	sendBuffer.append(tmpBuffer.get_span());
 	options &= ~(u16)Options::KEEP_ALIVE;
@@ -98,7 +98,7 @@ CONNECTION_INL
 CONNECTION_INL
 (void) build_error_header(Status::Code code) {
 	Span statusStr = Status::get_status_str(code);
-	Span errorPage = cfg->errorPages[Status::s_get_page_index(code)];
+	Span errorPage = cfg->errorPages[Status::get_page_index(code)];
 
 	options &= ~(u16)Options::KEEP_ALIVE;
 	sendBuffer.clear();

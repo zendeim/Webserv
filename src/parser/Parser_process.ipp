@@ -134,7 +134,7 @@ PARSER_INL
 	Bitmap configured = {};
 
 	for (usize index = 0; index < Status::errorPageCount; index++)
-		server.errorPages[index] = Status::get_status_page(index);
+		server.errorPages[index] = Status::get_status_page((Status::Code)(Status::i400 + index));
 	if (folder.ptr == NULL)
 		return;
 	s_build_error_page_path(pathBuffer, server.serverRoot, folder);
@@ -147,10 +147,10 @@ PARSER_INL
 
 	char* name;
 	while ((name = entries.readdir(directoryFd)) != NULL) {
-		const Status status = {(u16)Status::s_str_to_code(name)};
-		if (!status.is_error())
+		const Status::Code status = Status::str_to_status(name);
+		if (!Status::is_error(status))
 			continue;
-		const usize index = status.get_page_index();
+		const usize index = Status::get_page_index(status);
 		if (configured.bitread(index))
 			close(directoryFd), PERR_EXIT(1, "Error: Duplicate error page");
 		configured.bitset(index);

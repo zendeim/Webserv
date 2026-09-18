@@ -88,8 +88,8 @@ CONNECTION_INL
 		bodySize = cfg->maxBodySize;
 
 	startTime = Clock::time_elapsed();	// Resets the clock on a valid response header
-	if (req.location->redirectStatus.is_valid())
-		return redirect_setup(epoll, (Status::Code)req.location->redirectStatus.index);
+	if (Status::is_redirect(req.location->redirectStatus))
+		return redirect_setup(epoll, req.location->redirectStatus);
 	if (options & Options::CGI)
 		return cgi_setup(epoll);
 	if (options & Options::GET)

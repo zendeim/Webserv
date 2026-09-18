@@ -15,7 +15,7 @@ CONNECTION_INL
 	const isize code = read_chunked(epoll);
 	if (code < 0)
 		return -1;
-	if (code >= Status::i400)
+	if (Status::is_error((Status::Code)code))
 		return flush_setup_close(epoll, (Status::Code)code);
 	const usize bytesToWrite = recvBuffer.scanPos - recvBuffer.readPos;
 	if (bytesToWrite != 0 && recvBuffer.write_all(writeFd, bytesToWrite) < 0)
@@ -57,7 +57,7 @@ CONNECTION_INL
 		return 0;	// Still no CGI Header
 	}
 	Status::Code code = build_cgi_header(Status::i200);
-	if (code == Status::ixxx)
+	if (code == Status::invalid)
 		return flush_setup_close(epoll, Status::i500);
 	if (readFd == -1)
 		return flush_setup(epoll);

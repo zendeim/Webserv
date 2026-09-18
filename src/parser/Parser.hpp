@@ -42,7 +42,7 @@ struct Parser {
 		Span uploadStore;
 		ParsedCgi cgiBlock;
 		Span redirectTarget;
-		Status redirectStatus;
+		Status::Code redirectStatus;
 		u8 methods;
 		bool autoindex;
 		bool autoindexSet;

@@ -62,8 +62,8 @@ PARSER_INL
 		if (dir.args.count != 2 || dir.args[0].size != 3 || loc.redirectTarget.size != 0)
 			PERR_EXIT(1, "Error: Invalid redirect");
 		const usize status = fn::qstrtol10(dir.args[0].ptr);
-		loc.redirectStatus.index = Status::s_num_to_code(status);
-		if (status < 300 || status > 399 || !loc.redirectStatus.is_valid())
+		loc.redirectStatus = Status::num_to_status(status);
+		if (!Status::is_redirect(loc.redirectStatus))
 			PERR_EXIT(1, "Error: Invalid redirect status");
 		loc.redirectTarget = dir.args[1];
 		length = dir.args[1].size;
@@ -119,7 +119,7 @@ PARSER_INL
 	ParsedLocation loc = {};
 	loc.uri = tokArray[0].value;
 	loc.redirectTarget = Span::create("");
-	loc.redirectStatus.index = Status::unset;
+	loc.redirectStatus = Status::unset;
 
 	if (loc.uri.ptr[0] != '/')
 		PERR_EXIT(1, "Error: Invalid location path");

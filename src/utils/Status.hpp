@@ -3,11 +3,10 @@
 #include "core.hpp"
 #include "Span.hpp"
 /*
-	Status stores a u16 offset into its static string catalog.  Every
-	status record is length-prefixed and NUL-terminated.  Error records append
-	a length-prefixed, NUL-terminated default page immediately after the status.
+	Status::Code stores a one-based index into the static string catalog.
+	Status strings and default error pages are length-prefixed and NUL-terminated.
 
-	Index 1 is unset and index 2 is invalid
+	Codes 0, 65 and 255 are unset, ok and invalid sentinels.
 */
 
 struct Status {
@@ -37,7 +36,7 @@ struct Status {
 		"h1{font-size:4em;margin:0}</style>" \
 		"<h1>" code "</h1><p>" reason "</p></html>"
 
-	static inline const char pages[39][256] = {
+	static inline const char pages[40][256] = {
 		"\xC8" HTTP_PAGE("400", "Bad Request"), "\xCA" HTTP_PAGE("401", "Unauthorized"),
 		"\xD2" HTTP_PAGE("402", "Payment Required"), "\xC4" HTTP_PAGE("403", "Forbidden"),
 		"\xC4" HTTP_PAGE("404", "Not Found"), "\xD6" HTTP_PAGE("405", "Method Not Allowed"),
@@ -47,6 +46,7 @@ struct Status {
 		"\xD8" HTTP_PAGE("412", "Precondition Failed"), "\xD4" HTTP_PAGE("413", "Content Too Large"),
 		"\xCA" HTTP_PAGE("414", "URI Too Long"), "\xDE" HTTP_PAGE("415", "Unsupported Media Type"),
 		"\xDC" HTTP_PAGE("416", "Range Not Satisfiable"), "\xD6" HTTP_PAGE("417", "Expectation Failed"),
+		"\xC2" HTTP_PAGE("418", "(Unused)"),
 		"\xD8" HTTP_PAGE("421", "Misdirected Request"), "\xDC" HTTP_PAGE("422", "Unprocessable Content"),
 		"\xBE" HTTP_PAGE("423", "Locked"), "\xD4" HTTP_PAGE("424", "Failed Dependency"),
 		"\xC4" HTTP_PAGE("425", "Too Early"), "\xD2" HTTP_PAGE("426", "Upgrade Required"),
@@ -60,6 +60,7 @@ struct Status {
 		"\xF0" HTTP_PAGE("511", "Network Authentication Required"),
 	};
 	#undef HTTP_PAGE
+	static const usize errorPageCount = ARRAY_SIZE(pages);
 
 	enum Code : u8 {
 		unset = 0, ok = 65, invalid = 255,
@@ -93,7 +94,7 @@ struct Status {
 				0b0000000000000000000000000000000010000000000000000000101101111110, // 420-483
 				0b0000000000000000000000000000000000001101111111110000000000000000, // 484-547
 			};
-			u8 totalPopcount[8] = {1, 6, 16, 0, 25, 44, 54, 0};	// Cumulative popcount of each LUT entry
+			u8 totalPopcount[8] = {1, 6, 16, 16, 25, 44, 54, 0};	// Cumulative popcount of each LUT entry
 		}	static const lut;
 
 		number -= 100;
@@ -123,20 +124,29 @@ struct Status {
 
 	ATTR(static_inl, pure)
 	Span get_status_str(Code code) {
-		return {(char*)(strings[code] + 1), (u8)strings[code][0]};
+		ASSERT(is_valid(code), "Invalid status code");
+		const usize index = code - i100;
+		return {(char*)(strings[index] + 1), (u8)strings[index][0]};
+	}
+
+	ATTR(static_inl, const)
+	usize get_page_index(Code code) {
+		ASSERT(is_error(code), "Status code is not an error");
+		return code - i400;
 	}
 
 	ATTR(static_inl, pure)
-	Span get_default_page(Code code) {
-		return {(char*)(pages[code] + 1), (u8)pages[code][0]};
+	Span get_status_page(Code code) {
+		const usize index = get_page_index(code);
+		return {(char*)(pages[index] + 1), (u8)pages[index][0]};
 	}
 
-	ATTR(static_inl, const) bool is_valid(Code idx) { return (idx - 1) <= 64; }
+	ATTR(static_inl, const) bool is_valid(Code idx) { return idx >= i100 && idx <= i511; }
 	ATTR(static_inl, const) bool is_informational(Code idx) { return idx >= i100 && idx < i200; }
 	ATTR(static_inl, const) bool is_success(Code idx) { return idx >= i200 && idx < i300; }
 	ATTR(static_inl, const) bool is_redirect(Code idx) { return idx >= i300 && idx < i400; }
 	ATTR(static_inl, const) bool is_client_error(Code idx) { return idx >= i400 && idx < i500; }
-	ATTR(static_inl, const) bool is_server_error(Code idx) { return idx >= i500; }
-	ATTR(static_inl, const) bool is_error(Code idx) { return idx >= i400; }
+	ATTR(static_inl, const) bool is_server_error(Code idx) { return idx >= i500 && idx <= i511; }
+	ATTR(static_inl, const) bool is_error(Code idx) { return idx >= i400 && idx <= i511; }
 	ATTR(static_inl, const) bool is_set(Code idx) { return idx != unset; }
 };
