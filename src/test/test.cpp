@@ -48,7 +48,7 @@ TestRange s_create_random_range(u8* buffer) {
 	range.start = CLAMP(range.start % 4_MB, 128, 4_MB - 128);
 	range.size = sizes[range.size % ARRAY_SIZE(sizes)];
 	range.value = (u8)(randomValue >> 41);
-	range.value = MAX(range.value + 64u, 255);	// Biases it so that 75% of sentinels are valid
+	range.value = MIN(range.value + 64u, 255);	// Biases it so that 75% of sentinels are valid
 
 	usize index = range.start + (usize)(range.size * randomFloat);
 	buffer[index] = range.value;

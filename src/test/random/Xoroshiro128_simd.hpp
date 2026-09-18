@@ -53,7 +53,7 @@ struct Xoroshiro128 {
 
 	ATTR(static_inl)
 	void random_range(u8* dst, usize length) {
-		const usize bodyLength = length / sizeof(u64x4);
+		const usize bodyLength = length - length % sizeof(u64x4);
 		const usize tailLength = length % sizeof(u64x4);
 
 		for (usize i = 0; i < bodyLength; i += sizeof(u64x4)) {

@@ -98,16 +98,12 @@ struct Status {
 		}	static const lut;
 
 		number -= 100;
-		if (number >= 412)
-			return invalid;
-
-		usize div = number / 64;		// div indexes the LUT
+		usize div = (number < 412) ? number / 64 : 2;
 		usize rem = number % 64;		// rem is the bit index within that LUT segment
 		u64 word = lut.bitmap[div];
 		u64 bit = 1ull << rem;
-		if (word & bit)
-			return (Code)(POPCOUNT(word & (bit - 1)) + lut.totalPopcount[div]);
-		return invalid;
+		u8 result = POPCOUNT(word & (bit - 1)) + lut.totalPopcount[div];
+		return (word & bit) ? (Code)result : invalid;
 	}
 
 	ATTR(static_inl, pure)
