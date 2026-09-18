@@ -1,7 +1,7 @@
 #pragma once
 #include "core.hpp"
 #include "Span.hpp"
-#include "x86intrin.h"
+#include <x86intrin.h>
 #include "Random.hpp"
 
 /*
@@ -67,6 +67,26 @@ struct Xoroshiro128 {
 			dst += bodyLength;
 			for (usize i = 0; i < tailLength; i++)
 				dst[i] = ptr[i];
+		}
+	}
+
+	ATTR(static_inl)
+	void random_range(u8* dst, usize length, u8 mask) {
+		const u64 vecMask = (u64)mask * 0x0101010101010101ull;
+		const usize bodyLength = length - length % sizeof(u64x4);
+		const usize tailLength = length % sizeof(u64x4);
+
+		for (usize i = 0; i < bodyLength; i += sizeof(u64x4)) {
+			u64x4 randomValues = next4() & vecMask;
+			MEMCPY_INLINE(dst + i, &randomValues, sizeof(u64x4));
+		}
+
+		if (tailLength) {
+			u64x4 randomValues = next4();
+			u8* ptr = (u8*) &randomValues;
+			dst += bodyLength;
+			for (usize i = 0; i < tailLength; i++)
+				dst[i] = ptr[i] & mask;
 		}
 	}
 

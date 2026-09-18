@@ -46,7 +46,7 @@ void* q32memchr(void* vstr, u8 c, usize length) {
 		__m256i block = _mm256_loadu_si256((const __m256i*)str);
 		__m256i eq = _mm256_cmpeq_epi8(block, needle);
 		usize mask = (u32)_mm256_movemask_epi8(eq);
-		matchIndex = (mask == 0) ? WORD_BITS : (usize)CTZ(mask);
+		matchIndex = TZCNT(mask);
 		if (matchIndex != WORD_BITS)
 			break;
 		str += 32;

@@ -21,7 +21,9 @@
 #endif
 
 #define CLZ(x)			__builtin_clzll(x)
+#define LZCNT(x)		x == 0 ? WORD_BITS : (usize)__builtin_clzll(x)
 #define CTZ(x)			__builtin_ctzll(x)
+#define TZCNT(x)		x == 0 ? WORD_BITS : (usize)__builtin_ctzll(x)
 #define POPCOUNT(x)		__builtin_popcountll(x)
 #define FFS(x)			__builtin_ffsll(x)
 #define PARITY(x)		__builtin_parityll(x)
