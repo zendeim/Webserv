@@ -2,6 +2,7 @@
 An HTTP/1.1 server written in C++
 
 This readme was NOT written with AI (except for the formatting because life is too short to learn proper markdown syntax). I don't know why, but I haven't read a ReadMe that was written by AI that was worth reading.
+Glossary of terms at the end if you need it!
 
 ## Description
 Initially, this server was written as part of the 42 curriculum that enforces several constraints, such as the inability of checking errno after reads/writes, C++98 standard and other weird stuff
@@ -61,7 +62,7 @@ Each location has about 6 string views, which ordinarily would consume at least 
 Most CGI environment variables are given to the child process directly from the buffer, with the QUERY_NAME= prepended inplace avoid the creation of a separate copy. Additionally, extra care went in to avoid writes after fork, so that no Copy on Writes (CoWs) are triggered;
 
 ### O(1) HTTP Status indexing
-Probably the dumbest optimization relative to time spent versus performance gained, but using a tiny lookup-table, I avoid branchy code and get an extremely fast and lean indexing for the HTTP statuses.
+Probably the dumbest optimization relative to time spent versus performance gained, but also one of the best pieces of code i've written. Using a tiny lookup-table, I avoid branchy code and get an extremely fast and lean indexing for the HTTP statuses. 18 lines of assembly, no branches, everything in one cache load. Can't get much better than that (believe me i tried)
 
 ### SIMD SSE/AVX primitives and Sentinel-based parsing
 Most matching operations are done with SIMD. 
@@ -85,44 +86,8 @@ This increases the chance the table stays hot in L1 cache
 ### Rapid-fire cool stuff
 * CGI Children are reaped asynchronously
 * Configuration parsing reuses the connection pool's memory
-
-## Glossary
-### SIMD (Single Input Multiple Data)
-	Refers to instructions that process multiple data at once. 
-	For example, to clear an 8 byte string, instead of setting each byte to 0, you access it as a 64 bit integer and set that to 0 once
-
-### OOB (Out of bounds)
-	Refers to an access that goes beyond the bounds of something
-	For example, I have a 6 byte string, but I access it as an 8 byte integer, and it goes 2 bytes beyond its bounds
-
-### Padding
-	Something to protect against OOB, you deliberately allocate more than you need so you can guarantee that a SIMD access is safe
-	For example, instead of allocating a 6 byte string, you allocate 6 + 8, so that way you never spill for an 8 byte access. This sounds wasteful until you get into Arenas
-
-### POD (Plain Old Data)
-	Refers to classes that don't have user defined constructors, destructors or assignment and are trivially initializable. This makes them suitable for unions and to be interpretable as raw memory
-
-### Clobberable Padding
-	Essentially, padding where you don't care that it gets overwritten. Read access padding can essentially be free if you just guarantee that the memory address being spilled to exists within your program.
-	You can even write to it, as long as you save the values being written to and restore them after your execution. Clobberable padding is padding that exists explicitly for padding's sake, so you don't care about overwriting
-
-### Arenas
-	In simple terms, a big allocation to contain other smaller allocations inside it. This is amazing for several reasons:
-	1) You can pad per arena instead of per allocation
-	2) You guarantee that the memory region you got is contiguous
-	3) Less memory fragmentation, more predictable runtime, better performance
-
-## Padding
-POST/PRE refer to the location of the padding. [PRE] [DATA] [POST]
-
-1) Prepending QUERY_STRING= in cgi setup depends on the buffer being pre-clobberable-padded with 8 bytes. QUERY_STRING= is 13 bytes
-(PRE 8 Clobberable padding)
-2) Most find algorithms depend on the buffer being padded with at least 4 bytes to insert a sentinel like \r\n\r\n
-(POST 8 bytes OOB padding because it is restored)
-3) Match algorithms require 24 bytes OOB padding
-(POST 24 bytes OOB padding)
-
-Buffer has 8 clobberable bytes before data and 8 after it. The three size counters provide another 24 readable bytes after data, for 32 bytes of physical trailing storage. Sentinel writes use only the first 8 bytes and restore them; the counters must never be clobbered
+* All error pages (and default error pages) are cached in memory. To serve an error response, no open is needed!
+* Epoll Event packs connection index in it as a key
 
 ## Parsing Invariants
 * Comments are stripped from parsing
@@ -147,29 +112,19 @@ Buffer has 8 clobberable bytes before data and 8 after it. The three size counte
 * An index never starts with a "/"
 * A URI always starts with a "/"
 
-## Conventions
-### Sizes
-Will always take a maximum size of LONG_MAX, even for unsigned types. This is done to avoid overflows and always have error sentinels. LONG_MAX is a ridiculously large number anyhow, any real constraint should realistically be much smaller
+## Padding Invariants
+POST/PRE refer to the location of the padding. [PRE] [DATA] [POST]
 
-### Classes
-All classes are POD types
-* init() prepares the class to be used
-* reset() resets the class to a starting position, but still reusable
-* clear() effectively destroys the class (deallocates, closes all fds, etc), requiring an init again
+1) Prepending QUERY_STRING= in cgi setup depends on the buffer being pre-clobberable-padded with 8 bytes. QUERY_STRING= is 13 bytes
+(PRE 8 Clobberable padding)
+2) Most find algorithms depend on the buffer being padded with at least 4 bytes to insert a sentinel like \r\n\r\n
+(POST 8 bytes OOB padding because it is restored)
+3) Match algorithms require 24 bytes OOB padding
+(POST 24 bytes OOB padding)
 
-When reset() and clear() would effectively mean same thing, clear() is used
-
-### Style
-* Class names are UpperCase, functions are snake_case, variables are camelCase
-* Brace styles are K&R, one liners don't get braces, and end braces are always solo, because
-if {
-	do..whatever
-} else is ugly as shit. Notable exception being do while
-
-* Pointers and references attach close to their type
-Example: char* str, char& str, char*& str
-
-* Simple getters and methods can become one-liners to avoid using too much vertical space
+Buffer has 8 clobberable bytes before data and 8 after it. 
+The three size counters provide another 24 readable bytes after data, for 32 bytes of physical trailing storage.
+Sentinel writes use only the first 8 bytes and restore them.
 
 ## Architecture
 A single connection uses 16kb of space, of which 64 bytes is used by metadata, and the rest by buffers
@@ -201,5 +156,52 @@ By constraining epoll to client FD only, we ensure continuity of the data stream
 
 Given that these conditions are deliberately obtuse, treating them as fatal errors is acceptable
 
-## Post Mortem
-For now, I have
+## Conventions
+### Sizes
+Will always take a maximum size of LONG_MAX, even for unsigned types. This is done to avoid overflows and always have error sentinels. LONG_MAX is a ridiculously large number anyhow, any real constraint should realistically be much smaller
+
+### Classes
+All classes are POD types
+* init() prepares the class to be used
+* reset() resets the class to a starting position, but still reusable
+* clear() effectively destroys the class (deallocates, closes all fds, etc), requiring an init again
+
+When reset() and clear() would effectively mean same thing, clear() is used
+
+### Style
+* Class names are UpperCase, functions are snake_case, variables are camelCase
+* Brace styles are K&R, one liners don't get braces, and end braces are always solo, because
+if {
+	do..whatever
+} else is ugly as shit. Notable exception being do while
+
+* Pointers and references attach close to their type
+Example: char* str, char& str, char*& str
+
+* Simple getters and methods can become one-liners to avoid using too much vertical space
+
+## Glossary
+### SIMD (Single Input Multiple Data)
+	Refers to instructions that process multiple data at once. 
+	For example, to clear an 8 byte string, instead of setting each byte to 0, you access it as a 64 bit integer and set that to 0 once
+
+### OOB (Out of bounds)
+	Refers to an access that goes beyond the bounds of something
+	For example, I have a 6 byte string, but I access it as an 8 byte integer, and it goes 2 bytes beyond its bounds
+
+### Padding
+	Something to protect against OOB, you deliberately allocate more than you need so you can guarantee that a SIMD access is safe
+	For example, instead of allocating a 6 byte string, you allocate 6 + 8, so that way you never spill for an 8 byte access. This sounds wasteful until you get into Arenas
+
+### POD (Plain Old Data)
+	Refers to classes that don't have user defined constructors, destructors or assignment and are trivially initializable. This makes them suitable for unions and to be interpretable as raw memory
+
+### Clobberable Padding
+	Essentially, padding where you don't care that it gets overwritten. Read access padding can essentially be free if you just guarantee that the memory address being spilled to exists within your program.
+	You can even write to it, as long as you save the values being written to and restore them after your execution. Clobberable padding is padding that exists explicitly for padding's sake, so you don't care about overwriting
+
+### Arenas
+	In simple terms, a big allocation to contain other smaller allocations inside it. This is amazing for several reasons:
+	1) You can pad per arena instead of per allocation
+	2) You guarantee that the memory region you got is contiguous
+	3) Less memory fragmentation, more predictable runtime, better performance
