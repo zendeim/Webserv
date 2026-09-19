@@ -9,6 +9,13 @@
 #define static_inl			static inline
 #define offsetof(t, d)		__builtin_offsetof(t, d)
 
+#define ATTR(kind, ...) ATTR_##kind __attribute__((__VA_ARGS__))
+#define ATTR_none
+#define ATTR_noinl __attribute__((noinline))
+#define ATTR_inl inline __attribute__((always_inline))
+#define ATTR_static static
+#define ATTR_static_inl static inline __attribute__((always_inline))
+
 // Wrapped keywords
 #if defined(__cplusplus) && __cplusplus >= 201103L
 	#define STATIC_ASSERT(expr) static_assert((expr), #expr)
@@ -20,12 +27,6 @@
 
 #define ARRAY_SIZE(arr)		(sizeof(arr) / sizeof((arr)[0]))
 #define ARRAY_END(arr)		(&(arr)[ARRAY_SIZE(arr)])
-#define ATTR(kind, ...) ATTR_##kind __attribute__((__VA_ARGS__))
-#define ATTR_none
-#define ATTR_inl inline __attribute__((always_inline))
-#define ATTR_static static
-#define ATTR_static_inl static inline __attribute__((always_inline))
-
 // always_inline, noinline, packed, aligned(n), cold, hot
 // const: Function depends only on its arguments (doesn't read from memory)
 // pure: Function produces no observable side effects (may read from memory)

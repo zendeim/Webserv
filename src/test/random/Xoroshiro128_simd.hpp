@@ -12,6 +12,7 @@
 	TODO: 
 		1) See if mixing + and ++ is bad
 		2) Create SIMD RNG generation
+		3) Change to Xoroshiro +
 */
 struct Xoroshiro128 {
 	static_inl u64x4 stateLow;
