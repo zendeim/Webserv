@@ -8,7 +8,7 @@
 #include "Server.hpp"
 
 int main(int argc, char** argv, char** envp) {
-	static constinit Server server = {};	// REVIEW: see if initializing like this touches pages
+	static Server server = {};	// REVIEW: see if initializing like this touches pages
 	(void)argc, (void)argv, (void)envp;
 
 	if (argc < 2)
